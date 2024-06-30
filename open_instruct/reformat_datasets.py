@@ -26,58 +26,58 @@ import argparse
 from instruction_encode_templates import encode_instruction_example, encode_few_shot_example
 
 
-def convert_super_ni_data(data_dir, output_dir, zero_shot_examples_per_task=60, few_shot_examples_per_task=20, n_few_shot=2):
-    os.makedirs(output_dir, exist_ok=True)
-    train_tasks = []
-    with open(os.path.join(data_dir, "splits", "xlingual", "train_tasks.txt"), "r") as fin:
-        for line in fin:
-            if not "_mmmlu_" in line:   # skip mmlu to avoid test leakage
-                train_tasks.append(line.strip())
-    with open(os.path.join(output_dir, "super_ni_data.jsonl"), "w") as fout:
-        for task in train_tasks:
-            with open(os.path.join(data_dir, "tasks", f"{task}.json"), "r") as fin:
-                task_data = json.load(fin)
-            instruction = task_data["Definition"][0]
-            if zero_shot_examples_per_task + few_shot_examples_per_task < len(task_data["Instances"]):
-                instances = random.sample(task_data["Instances"], k=zero_shot_examples_per_task+few_shot_examples_per_task)
-            else:
-                instances = task_data["Instances"]
-            for instance in instances[:zero_shot_examples_per_task]:
-                encoded_example = encode_instruction_example(
-                    instruction=instruction, 
-                    input=instance["input"], 
-                    output=instance["output"][0],
-                    random_template=True,
-                    eos_token=None
-                )
-                fout.write(json.dumps({
-                    "dataset": "super_ni",
-                    "id": f"super_ni_{instance['id']}",
-                    "messages": [
-                        {"role": "user", "content": encoded_example["prompt"]},
-                        {"role": "assistant", "content": encoded_example["completion"]},
-                    ]
-                }) + "\n")
-            for instance in instances[zero_shot_examples_per_task:]:
-                if n_few_shot < len(task_data["Positive Examples"]):
-                    examplars = random.sample(task_data["Positive Examples"], k=n_few_shot)
-                else:
-                    examplars = task_data["Positive Examples"]
-                encoded_example = encode_few_shot_example(
-                    instruction=instruction,
-                    examplars=examplars,
-                    input=instance["input"],
-                    output=instance["output"][0],
-                    eos_token=None
-                )
-                fout.write(json.dumps({
-                    "dataset": "super_ni",
-                    "id": f"super_ni_{instance['id']}",
-                    "messages": [
-                        {"role": "user", "content": encoded_example["prompt"]},
-                        {"role": "assistant", "content": encoded_example["completion"]},
-                    ]
-                }) + "\n")
+# def convert_super_ni_data(data_dir, output_dir, zero_shot_examples_per_task=60, few_shot_examples_per_task=20, n_few_shot=2):
+#     os.makedirs(output_dir, exist_ok=True)
+#     train_tasks = []
+#     with open(os.path.join(data_dir, "splits", "xlingual", "train_tasks.txt"), "r") as fin:
+#         for line in fin:
+#             if not "_mmmlu_" in line:   # skip mmlu to avoid test leakage
+#                 train_tasks.append(line.strip())
+#     with open(os.path.join(output_dir, "super_ni_data.jsonl"), "w") as fout:
+#         for task in train_tasks:
+#             with open(os.path.join(data_dir, "tasks", f"{task}.json"), "r") as fin:
+#                 task_data = json.load(fin)
+#             instruction = task_data["Definition"][0]
+#             if zero_shot_examples_per_task + few_shot_examples_per_task < len(task_data["Instances"]):
+#                 instances = random.sample(task_data["Instances"], k=zero_shot_examples_per_task+few_shot_examples_per_task)
+#             else:
+#                 instances = task_data["Instances"]
+#             for instance in instances[:zero_shot_examples_per_task]:
+#                 encoded_example = encode_instruction_example(
+#                     instruction=instruction, 
+#                     input=instance["input"], 
+#                     output=instance["output"][0],
+#                     random_template=True,
+#                     eos_token=None
+#                 )
+#                 fout.write(json.dumps({
+#                     "dataset": "super_ni",
+#                     "id": f"super_ni_{instance['id']}",
+#                     "messages": [
+#                         {"role": "user", "content": encoded_example["prompt"]},
+#                         {"role": "assistant", "content": encoded_example["completion"]},
+#                     ]
+#                 }) + "\n")
+#             for instance in instances[zero_shot_examples_per_task:]:
+#                 if n_few_shot < len(task_data["Positive Examples"]):
+#                     examplars = random.sample(task_data["Positive Examples"], k=n_few_shot)
+#                 else:
+#                     examplars = task_data["Positive Examples"]
+#                 encoded_example = encode_few_shot_example(
+#                     instruction=instruction,
+#                     examplars=examplars,
+#                     input=instance["input"],
+#                     output=instance["output"][0],
+#                     eos_token=None
+#                 )
+#                 fout.write(json.dumps({
+#                     "dataset": "super_ni",
+#                     "id": f"super_ni_{instance['id']}",
+#                     "messages": [
+#                         {"role": "user", "content": encoded_example["prompt"]},
+#                         {"role": "assistant", "content": encoded_example["completion"]},
+#                     ]
+#                 }) + "\n")
             
             
 def convert_cot_data(data_dir, output_dir, num_zero_shot_examples=50000, num_few_shot_examples=50000):
@@ -163,229 +163,229 @@ def convert_dolly_data(data_dir, output_dir, number_examples=None):
             }) + "\n")
 
 
-def convert_self_instruct_data(data_dir, output_dir, number_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    with open(os.path.join(data_dir, "all_instances_82K.jsonl"), "r") as fin:
-        for line in fin:
-            examples.append(json.loads(line))
-    if number_examples:
-        examples = random.sample(examples, k=number_examples)
-    output_path = os.path.join(output_dir, "self_instruct_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            encoded_example = encode_instruction_example(
-                instruction=example["instruction"], 
-                input=example["input"], 
-                output=example["output"],
-                random_template=True,
-                eos_token=None
-            )
-            fout.write(json.dumps({
-                "dataset": "self_instruct",
-                "id": f"self_instruct_{idx}",
-                "messages": [
-                    {"role": "user", "content": encoded_example["prompt"]},
-                    {"role": "assistant", "content": encoded_example["completion"]},
-                ]
-            }) + "\n")
+# def convert_self_instruct_data(data_dir, output_dir, number_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     with open(os.path.join(data_dir, "all_instances_82K.jsonl"), "r") as fin:
+#         for line in fin:
+#             examples.append(json.loads(line))
+#     if number_examples:
+#         examples = random.sample(examples, k=number_examples)
+#     output_path = os.path.join(output_dir, "self_instruct_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             encoded_example = encode_instruction_example(
+#                 instruction=example["instruction"], 
+#                 input=example["input"], 
+#                 output=example["output"],
+#                 random_template=True,
+#                 eos_token=None
+#             )
+#             fout.write(json.dumps({
+#                 "dataset": "self_instruct",
+#                 "id": f"self_instruct_{idx}",
+#                 "messages": [
+#                     {"role": "user", "content": encoded_example["prompt"]},
+#                     {"role": "assistant", "content": encoded_example["completion"]},
+#                 ]
+#             }) + "\n")
 
 
-def convert_unnatural_instructions_data(data_dir, output_dir, num_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    with open(os.path.join(data_dir, "core_data.jsonl"), "r") as fin:
-        for line in fin:
-            task_data = json.loads(line)
-            instruction = task_data["instruction"]
-            for instance in task_data["instances"]:
-                if instance["constraints"] and instance["constraints"].lower() not in ["none", "none."]:
-                    instance_instruction = instruction + "\n" + instance["constraints"]
-                else:
-                    instance_instruction = instruction
-                encoded_example = encode_instruction_example(
-                    instruction=instance_instruction,
-                    input=instance["input"],
-                    output=instance["output"],
-                    random_template=True,
-                    eos_token=None,
-                )
-                examples.append(encoded_example)
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
-    with open((os.path.join(output_dir, "unnatural_instructions_data.jsonl")), "w") as fout:
-        for idx, example in enumerate(examples):
-            fout.write(json.dumps({
-                "dataset": "unnatural_instructions",
-                "id": f"unnatural_instructions_{idx}",
-                "messages": [
-                    {"role": "user", "content": example["prompt"]},
-                    {"role": "assistant", "content": example["completion"]},
-                ]
-            }) + "\n")
+# def convert_unnatural_instructions_data(data_dir, output_dir, num_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     with open(os.path.join(data_dir, "core_data.jsonl"), "r") as fin:
+#         for line in fin:
+#             task_data = json.loads(line)
+#             instruction = task_data["instruction"]
+#             for instance in task_data["instances"]:
+#                 if instance["constraints"] and instance["constraints"].lower() not in ["none", "none."]:
+#                     instance_instruction = instruction + "\n" + instance["constraints"]
+#                 else:
+#                     instance_instruction = instruction
+#                 encoded_example = encode_instruction_example(
+#                     instruction=instance_instruction,
+#                     input=instance["input"],
+#                     output=instance["output"],
+#                     random_template=True,
+#                     eos_token=None,
+#                 )
+#                 examples.append(encoded_example)
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
+#     with open((os.path.join(output_dir, "unnatural_instructions_data.jsonl")), "w") as fout:
+#         for idx, example in enumerate(examples):
+#             fout.write(json.dumps({
+#                 "dataset": "unnatural_instructions",
+#                 "id": f"unnatural_instructions_{idx}",
+#                 "messages": [
+#                     {"role": "user", "content": example["prompt"]},
+#                     {"role": "assistant", "content": example["completion"]},
+#                 ]
+#             }) + "\n")
 
 
-def convert_stanford_alpaca_data(data_dir, output_dir, num_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    with open(os.path.join(data_dir, "alpaca_data.json"), "r") as fin:
-        examples.extend(json.load(fin))
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
-    output_path = os.path.join(output_dir, "stanford_alpaca_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            encoded_example = encode_instruction_example(
-                instruction=example["instruction"], 
-                input=example["input"], 
-                output=example["output"],
-                random_template=True,
-                eos_token=None
-            )
-            fout.write(json.dumps({
-                "dataset": "stanford_alpaca",
-                "id": f"stanford_alpaca_{idx}",
-                "messages": [
-                    {"role": "user", "content": encoded_example["prompt"]},
-                    {"role": "assistant", "content": encoded_example["completion"]},
-                ]
-            }) + "\n")
+# def convert_stanford_alpaca_data(data_dir, output_dir, num_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     with open(os.path.join(data_dir, "alpaca_data.json"), "r") as fin:
+#         examples.extend(json.load(fin))
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
+#     output_path = os.path.join(output_dir, "stanford_alpaca_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             encoded_example = encode_instruction_example(
+#                 instruction=example["instruction"], 
+#                 input=example["input"], 
+#                 output=example["output"],
+#                 random_template=True,
+#                 eos_token=None
+#             )
+#             fout.write(json.dumps({
+#                 "dataset": "stanford_alpaca",
+#                 "id": f"stanford_alpaca_{idx}",
+#                 "messages": [
+#                     {"role": "user", "content": encoded_example["prompt"]},
+#                     {"role": "assistant", "content": encoded_example["completion"]},
+#                 ]
+#             }) + "\n")
 
 
-def convert_code_alpaca_data(data_dir, output_dir, num_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    with open(os.path.join(data_dir, "code_alpaca_20k.json"), "r") as fin:
-        examples.extend(json.load(fin))
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
-    output_path = os.path.join(output_dir, "code_alpaca_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            encoded_example = encode_instruction_example(
-                instruction=example["instruction"], 
-                input=example["input"], 
-                output=example["output"],
-                random_template=True,
-                eos_token=None
-            )
-            fout.write(json.dumps({
-                "dataset": "code_alpaca",
-                "id": f"code_alpaca_{idx}",
-                "messages": [
-                    {"role": "user", "content": encoded_example["prompt"]},
-                    {"role": "assistant", "content": encoded_example["completion"]},
-                ]
-            }) + "\n")
+# def convert_code_alpaca_data(data_dir, output_dir, num_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     with open(os.path.join(data_dir, "code_alpaca_20k.json"), "r") as fin:
+#         examples.extend(json.load(fin))
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
+#     output_path = os.path.join(output_dir, "code_alpaca_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             encoded_example = encode_instruction_example(
+#                 instruction=example["instruction"], 
+#                 input=example["input"], 
+#                 output=example["output"],
+#                 random_template=True,
+#                 eos_token=None
+#             )
+#             fout.write(json.dumps({
+#                 "dataset": "code_alpaca",
+#                 "id": f"code_alpaca_{idx}",
+#                 "messages": [
+#                     {"role": "user", "content": encoded_example["prompt"]},
+#                     {"role": "assistant", "content": encoded_example["completion"]},
+#                 ]
+#             }) + "\n")
 
 
-def convert_gpt4_alpaca_data(data_dir, output_dir, load_en=True, load_zh=False, num_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    if load_en:
-        with open(os.path.join(data_dir, "alpaca_gpt4_data.json"), "r") as fin:
-            examples.extend(json.load(fin))
-    if load_zh:
-        with open(os.path.join(data_dir, "alpaca_gpt4_data_zh.json"), "r") as fin:
-            examples.extend(json.load(fin))
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
-    output_path = os.path.join(output_dir, "gpt4_alpaca_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            encoded_example = encode_instruction_example(
-                instruction=example["instruction"], 
-                input=example["input"], 
-                output=example["output"],
-                random_template=True,
-                eos_token=None
-            )
-            fout.write(json.dumps({
-                "dataset": "gpt4_alpaca",
-                "id": f"gpt4_alpaca_{idx}",
-                "messages": [
-                    {"role": "user", "content": encoded_example["prompt"]},
-                    {"role": "assistant", "content": encoded_example["completion"]},
-                ]
-            }) + "\n")
+# def convert_gpt4_alpaca_data(data_dir, output_dir, load_en=True, load_zh=False, num_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     if load_en:
+#         with open(os.path.join(data_dir, "alpaca_gpt4_data.json"), "r") as fin:
+#             examples.extend(json.load(fin))
+#     if load_zh:
+#         with open(os.path.join(data_dir, "alpaca_gpt4_data_zh.json"), "r") as fin:
+#             examples.extend(json.load(fin))
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
+#     output_path = os.path.join(output_dir, "gpt4_alpaca_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             encoded_example = encode_instruction_example(
+#                 instruction=example["instruction"], 
+#                 input=example["input"], 
+#                 output=example["output"],
+#                 random_template=True,
+#                 eos_token=None
+#             )
+#             fout.write(json.dumps({
+#                 "dataset": "gpt4_alpaca",
+#                 "id": f"gpt4_alpaca_{idx}",
+#                 "messages": [
+#                     {"role": "user", "content": encoded_example["prompt"]},
+#                     {"role": "assistant", "content": encoded_example["completion"]},
+#                 ]
+#             }) + "\n")
 
 
-def convert_sharegpt_data(data_dir, output_dir, data_file="sharegpt_html_cleaned_and_split_2048.json", num_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    with open(os.path.join(data_dir, data_file), "r") as fin:
-        examples.extend(json.load(fin))
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
+# def convert_sharegpt_data(data_dir, output_dir, data_file="sharegpt_html_cleaned_and_split_2048.json", num_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     with open(os.path.join(data_dir, data_file), "r") as fin:
+#         examples.extend(json.load(fin))
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
 
-    output_path = os.path.join(output_dir, "sharegpt_data.jsonl")
-    with open(output_path, "w") as fout:
-        invalid_cnt = 0
-        for idx, example in enumerate(examples):
-            messages = []
-            valid = True
-            for message in example["conversations"]:
-                if message["from"] == "human" or message["from"] == "user":
-                    messages.append({
-                        "role": "user",
-                        "content": message["value"]
-                    })
-                elif message["from"] == "gpt" or message["from"] == "chatgpt":
-                    messages.append({
-                        "role": "assistant",
-                        "content": message["value"]
-                    })
-                elif message["from"] == "system":
-                    valid = False
-                    invalid_cnt += 1
-                    break
-                elif message["from"] == "bing":
-                    valid = False
-                    invalid_cnt += 1
-                    break
-                else:
-                    raise ValueError(f"Unknown message sender: {message['from']}")
-            if messages and valid:
-                fout.write(json.dumps({
-                    "dataset": "sharegpt",
-                    "id": f"sharegpt_{example['id']}",
-                    "messages": messages
-                }) + "\n")
-        if invalid_cnt > 0:
-            print(f"# of invalid examples in sharegpt data: {invalid_cnt}")
+#     output_path = os.path.join(output_dir, "sharegpt_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         invalid_cnt = 0
+#         for idx, example in enumerate(examples):
+#             messages = []
+#             valid = True
+#             for message in example["conversations"]:
+#                 if message["from"] == "human" or message["from"] == "user":
+#                     messages.append({
+#                         "role": "user",
+#                         "content": message["value"]
+#                     })
+#                 elif message["from"] == "gpt" or message["from"] == "chatgpt":
+#                     messages.append({
+#                         "role": "assistant",
+#                         "content": message["value"]
+#                     })
+#                 elif message["from"] == "system":
+#                     valid = False
+#                     invalid_cnt += 1
+#                     break
+#                 elif message["from"] == "bing":
+#                     valid = False
+#                     invalid_cnt += 1
+#                     break
+#                 else:
+#                     raise ValueError(f"Unknown message sender: {message['from']}")
+#             if messages and valid:
+#                 fout.write(json.dumps({
+#                     "dataset": "sharegpt",
+#                     "id": f"sharegpt_{example['id']}",
+#                     "messages": messages
+#                 }) + "\n")
+#         if invalid_cnt > 0:
+#             print(f"# of invalid examples in sharegpt data: {invalid_cnt}")
 
 
-def convert_baize_data(data_dir, output_dir, num_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    for source in ["alpaca", "medical", "quora", "stackoverflow"]:
-        with open(os.path.join(data_dir, f"{source}_chat_data.json"), "r") as fin:
-            examples.extend(json.load(fin))
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
-    output_path = os.path.join(output_dir, "baize_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            # split example["input"] by [|Human|] and [|AI|]
-            messages = []
-            rounds = example["input"].split("[|Human|]")[1:]
-            for round in rounds:
-                if not round.strip() or "[|AI|]" not in round:
-                    continue
-                human, assistant = round.split("[|AI|]")
-                messages.append({
-                    "role": "user",
-                    "content": human.strip()
-                })
-                messages.append({
-                    "role": "assistant",
-                    "content": assistant.strip()
-                })
-            fout.write(json.dumps({
-                "dataset": "baize",
-                "id": f"baize_{idx}",
-                "messages": messages
-            }) + "\n")
+# def convert_baize_data(data_dir, output_dir, num_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     for source in ["alpaca", "medical", "quora", "stackoverflow"]:
+#         with open(os.path.join(data_dir, f"{source}_chat_data.json"), "r") as fin:
+#             examples.extend(json.load(fin))
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
+#     output_path = os.path.join(output_dir, "baize_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             # split example["input"] by [|Human|] and [|AI|]
+#             messages = []
+#             rounds = example["input"].split("[|Human|]")[1:]
+#             for round in rounds:
+#                 if not round.strip() or "[|AI|]" not in round:
+#                     continue
+#                 human, assistant = round.split("[|AI|]")
+#                 messages.append({
+#                     "role": "user",
+#                     "content": human.strip()
+#                 })
+#                 messages.append({
+#                     "role": "assistant",
+#                     "content": assistant.strip()
+#                 })
+#             fout.write(json.dumps({
+#                 "dataset": "baize",
+#                 "id": f"baize_{idx}",
+#                 "messages": messages
+#             }) + "\n")
 
 
 def convert_oasst1_data(data_dir, output_dir, top_k_reply=None):
@@ -458,134 +458,134 @@ def convert_oasst1_data(data_dir, output_dir, top_k_reply=None):
                 example_cnt += 1
 
 
-def convert_lima_data(data_dir, output_dir, num_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    with open(os.path.join(data_dir, "train.jsonl"), "r") as fin:
-        for line in fin:
-            examples.append(json.loads(line))
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
-    output_path = os.path.join(output_dir, "lima_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            messages = []
-            if not len(example["conversations"]) % 2 == 0:
-                print(f"Waring: example {idx} in LIMA has odd number of messages. Cutting off the last message.")
-                example["conversations"] = example["conversations"][:-1]
+# def convert_lima_data(data_dir, output_dir, num_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     with open(os.path.join(data_dir, "train.jsonl"), "r") as fin:
+#         for line in fin:
+#             examples.append(json.loads(line))
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
+#     output_path = os.path.join(output_dir, "lima_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             messages = []
+#             if not len(example["conversations"]) % 2 == 0:
+#                 print(f"Waring: example {idx} in LIMA has odd number of messages. Cutting off the last message.")
+#                 example["conversations"] = example["conversations"][:-1]
             
-            for i in range(0, len(example["conversations"]), 2):
-                messages.append({
-                    "role": "user",
-                    "content": example["conversations"][i]
-                })
-                messages.append({
-                    "role": "assistant",
-                    "content": example["conversations"][i+1]
-                })
-            fout.write(json.dumps({
-                "dataset": "lima",
-                "id": f"lima_{idx}",
-                "messages": messages,
-            }) + "\n")
+#             for i in range(0, len(example["conversations"]), 2):
+#                 messages.append({
+#                     "role": "user",
+#                     "content": example["conversations"][i]
+#                 })
+#                 messages.append({
+#                     "role": "assistant",
+#                     "content": example["conversations"][i+1]
+#                 })
+#             fout.write(json.dumps({
+#                 "dataset": "lima",
+#                 "id": f"lima_{idx}",
+#                 "messages": messages,
+#             }) + "\n")
 
 
-def convert_wizardlm_data(data_dir, output_dir, num_examples=30000):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    with open(os.path.join(data_dir, "WizardLM_evol_instruct_V2_143k.json"), "r") as fin:
-        examples = json.load(fin)
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
+# def convert_wizardlm_data(data_dir, output_dir, num_examples=30000):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     with open(os.path.join(data_dir, "WizardLM_evol_instruct_V2_143k.json"), "r") as fin:
+#         examples = json.load(fin)
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
 
-    output_path = os.path.join(output_dir, "wizardlm_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            messages = []
-            assert len(example["conversations"]) % 2 == 0
-            for i in range(0, len(example["conversations"]), 2):
-                assert example["conversations"][i]["from"] == "human"
-                assert example["conversations"][i+1]["from"] == "gpt"
-                messages.append({
-                    "role": "user",
-                    "content": example["conversations"][i]["value"]
-                })
-                messages.append({
-                    "role": "assistant",
-                    "content": example["conversations"][i+1]["value"]
-                })
-            fout.write(json.dumps({
-                "dataset": "wizardlm",
-                "id": f"wizardlm_{example['idx']}",
-                "messages": messages,
-            }) + "\n")
-
-
-def convert_open_orca_data(data_dir, output_dir, num_gpt4_examples=30000, num_gpt35_examples=0):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-
-    df = pd.read_parquet(os.path.join(data_dir, "1M-GPT4-Augmented.parquet"))    
-    gpt4_examples = [row.to_dict() for _, row in df.iterrows()]
-    random.shuffle(gpt4_examples)
-    examples.extend(gpt4_examples[:num_gpt4_examples])
-
-    df = pd.read_parquet(os.path.join(data_dir, "3_5M-GPT3_5-Augmented.parquet"))
-    gpt35_examples = [row.to_dict() for _, row in df.iterrows()]
-    random.shuffle(gpt35_examples)
-    examples.extend(gpt35_examples[:num_gpt35_examples])
-
-    output_path = os.path.join(output_dir, "open_orca_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            messages = [
-                {"role": "system", "content": example["system_prompt"]},
-                {"role": "user", "content": example["question"]},
-                {"role": "assistant", "content": example["response"]}
-            ]
-            fout.write(json.dumps({
-                "dataset": "open_orca",
-                "id": f"open_orca_{example['id']}",
-                "messages": messages,
-            }) + "\n")
+#     output_path = os.path.join(output_dir, "wizardlm_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             messages = []
+#             assert len(example["conversations"]) % 2 == 0
+#             for i in range(0, len(example["conversations"]), 2):
+#                 assert example["conversations"][i]["from"] == "human"
+#                 assert example["conversations"][i+1]["from"] == "gpt"
+#                 messages.append({
+#                     "role": "user",
+#                     "content": example["conversations"][i]["value"]
+#                 })
+#                 messages.append({
+#                     "role": "assistant",
+#                     "content": example["conversations"][i+1]["value"]
+#                 })
+#             fout.write(json.dumps({
+#                 "dataset": "wizardlm",
+#                 "id": f"wizardlm_{example['idx']}",
+#                 "messages": messages,
+#             }) + "\n")
 
 
-def convert_hard_coded_data(data_dir, output_dir, repeat=1):
-    os.makedirs(output_dir, exist_ok=True)
-    data = pd.read_excel(os.path.join(data_dir, "hard_coded_examples.xlsx"), header=0)
-    output_path = os.path.join(output_dir, "hard_coded_data.jsonl")
-    with open(output_path, "w") as fout:
-        for _ in range(repeat):
-            for idx, row in data.iterrows():
-                fout.write(json.dumps({
-                    "dataset": "hard_coded",
-                    "id": f"hard_coded_{idx}",
-                    "messages": [
-                        {"role": "user", "content": row["Prompt"]},
-                        {"role": "assistant", "content": row["Output"]}
-                    ]
-                }) + "\n")
+# def convert_open_orca_data(data_dir, output_dir, num_gpt4_examples=30000, num_gpt35_examples=0):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+
+#     df = pd.read_parquet(os.path.join(data_dir, "1M-GPT4-Augmented.parquet"))    
+#     gpt4_examples = [row.to_dict() for _, row in df.iterrows()]
+#     random.shuffle(gpt4_examples)
+#     examples.extend(gpt4_examples[:num_gpt4_examples])
+
+#     df = pd.read_parquet(os.path.join(data_dir, "3_5M-GPT3_5-Augmented.parquet"))
+#     gpt35_examples = [row.to_dict() for _, row in df.iterrows()]
+#     random.shuffle(gpt35_examples)
+#     examples.extend(gpt35_examples[:num_gpt35_examples])
+
+#     output_path = os.path.join(output_dir, "open_orca_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             messages = [
+#                 {"role": "system", "content": example["system_prompt"]},
+#                 {"role": "user", "content": example["question"]},
+#                 {"role": "assistant", "content": example["response"]}
+#             ]
+#             fout.write(json.dumps({
+#                 "dataset": "open_orca",
+#                 "id": f"open_orca_{example['id']}",
+#                 "messages": messages,
+#             }) + "\n")
 
 
-def convert_science_data(data_dir, output_dir, num_examples=None):
-    os.makedirs(output_dir, exist_ok=True)
-    examples = []
-    with open(os.path.join(data_dir, "science_train.jsonl"), "r") as fin:
-        for line in fin:
-            examples.append(json.loads(line))
-    if num_examples:
-        examples = random.sample(examples, k=num_examples)
-    output_path = os.path.join(output_dir, "science_data.jsonl")
-    with open(output_path, "w") as fout:
-        for idx, example in enumerate(examples):
-            fout.write(json.dumps({
-                "dataset": f"science.{example['dataset']}",
-                "id": f"science_{idx}",
-                "messages": [
-                    {"role": "user", "content": example["input"]},
-                    {"role": "assistant", "content": example["output"]}
-                ],
-            }) + "\n")
+# def convert_hard_coded_data(data_dir, output_dir, repeat=1):
+#     os.makedirs(output_dir, exist_ok=True)
+#     data = pd.read_excel(os.path.join(data_dir, "hard_coded_examples.xlsx"), header=0)
+#     output_path = os.path.join(output_dir, "hard_coded_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for _ in range(repeat):
+#             for idx, row in data.iterrows():
+#                 fout.write(json.dumps({
+#                     "dataset": "hard_coded",
+#                     "id": f"hard_coded_{idx}",
+#                     "messages": [
+#                         {"role": "user", "content": row["Prompt"]},
+#                         {"role": "assistant", "content": row["Output"]}
+#                     ]
+#                 }) + "\n")
+
+
+# def convert_science_data(data_dir, output_dir, num_examples=None):
+#     os.makedirs(output_dir, exist_ok=True)
+#     examples = []
+#     with open(os.path.join(data_dir, "science_train.jsonl"), "r") as fin:
+#         for line in fin:
+#             examples.append(json.loads(line))
+#     if num_examples:
+#         examples = random.sample(examples, k=num_examples)
+#     output_path = os.path.join(output_dir, "science_data.jsonl")
+#     with open(output_path, "w") as fout:
+#         for idx, example in enumerate(examples):
+#             fout.write(json.dumps({
+#                 "dataset": f"science.{example['dataset']}",
+#                 "id": f"science_{idx}",
+#                 "messages": [
+#                     {"role": "user", "content": example["input"]},
+#                     {"role": "assistant", "content": example["output"]}
+#                 ],
+#             }) + "\n")
 
 
 

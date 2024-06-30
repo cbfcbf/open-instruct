@@ -64,6 +64,7 @@ wget -P data/raw_train/baize/ https://github.com/project-baize/baize-chatbot/raw
 echo "Downloading ShareGPT dataset..."
 wget -P data/raw_train/sharegpt/ https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/HTML_cleaned_raw_dataset/sg_90k_part1_html_cleaned.json
 wget -P data/raw_train/sharegpt/ https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/HTML_cleaned_raw_dataset/sg_90k_part2_html_cleaned.json
+#不能处理split
 echo "Splitting the ShareGPT dataset with 2048 max tokens per conversation..."
 python scripts/split_sharegpt_conversations.py \
     --in-files data/raw_train/sharegpt/sg_90k_part1_html_cleaned.json data/raw_train/sharegpt/sg_90k_part2_html_cleaned.json \
@@ -77,7 +78,7 @@ python scripts/split_sharegpt_conversations.py \
     --model-name-or-path oobabooga/llama-tokenizer \
     --max-length 4096
 
-
+#不能下载
 echo "Downloading LIMA dataset..."
 wget --header="Authorization: Bearer $HF_TOKEN" -P data/raw_train/lima/ https://huggingface.co/datasets/GAIR/lima/raw/main/train.jsonl
 
